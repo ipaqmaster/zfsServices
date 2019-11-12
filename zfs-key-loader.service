@@ -1,7 +1,7 @@
 [Unit]
 Description=Load pool encryption keys
 Before=systemd-user-sessions.service
-Before=zfs-mount.service
+Before=zfs-mount.service home.mount
 After=zfs-import.target
 
 [Service]

@@ -1,0 +1,11 @@
+
+_scriptRoot="$(dirname $(realpath $0))/"
+
+_services="$(ls -1 ${_scriptRoot}*.service)"
+
+  # Install and enable the services
+while read service
+do
+  sudo cp -v "$service" /etc/systemd/system/
+  sudo systemctl enable $(basename "$service")
+done <<<"$_services"

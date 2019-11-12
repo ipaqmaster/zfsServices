@@ -1,0 +1,13 @@
+[Unit]
+Description=Load pool encryption keys
+Before=systemd-user-sessions.service
+Before=zfs-mount.service
+After=zfs-import.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/bash -c 'swapZvol="$(zpool list -o name|sed -n 2p)/swap" ; swapoff -a ; zfs destroy $swapZvol >/dev/null 2>&1 ; swapKey=$(shuf -zer -n256  {A..Z} {a..z} {0..9}) >/dev/null 2>&1 ;yes $swapKey | zfs create -V8G $swapZvol -o encryption=on -o keyformat=passphrase -o keylocation=prompt ;while read input ; do mkswap /dev/zvol/$swapZvol ; swapon /dev/zvol/$swapZvol ;done <<< /dev/zvol/$swapZvol'
+
+[Install]
+WantedBy=multi-user.target

@@ -7,5 +7,6 @@ _services="$(ls -1 ${_scriptRoot}*.service)"
 while read service
 do
   sudo cp -v "$service" /etc/systemd/system/
+  sudo systemctl disable $(basename "$service") # Toggle to catch any missed 'wants'
   sudo systemctl enable $(basename "$service")
 done <<<"$_services"

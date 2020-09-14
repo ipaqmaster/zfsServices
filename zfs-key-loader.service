@@ -7,7 +7,7 @@ After=zfs-import.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/bash -c 'if grep -q 'unavailable' <<<`zfs get keystatus`; then echo "There are zfs keys to be loaded."; keys=$(systemd-ask-password "Enter your ZFS dataset Decryption key: ") ; yes $keys | zfs load-key -a; else echo "There are no zfs keys to be loaded."; fi'
+ExecStart=/usr/bin/bash -c 'if grep -q 'unavailable' <<<`zfs get keystatus | grep -v swap`; then echo "There are zfs keys to be loaded."; keys=$(systemd-ask-password "Enter your ZFS dataset Decryption key: ") ; yes $keys | zfs load-key -a; else echo "There are no zfs keys to be loaded."; fi'
 
 [Install]
 WantedBy=zfs-mount.service

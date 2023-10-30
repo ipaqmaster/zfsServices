@@ -7,7 +7,7 @@ After=zfs-import.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/bash -c 'if zfs list $(hostname -s) >/dev/null 2>&1 ; then swapZvol="$(hostname -s)/swap" ; else swapZvol="$(zpool list -o name|sed -n 2p)/swap" ; fi ; swapoff -a ; zfs destroy $swapZvol >/dev/null 2>&1 ; swapKey=$(shuf -zer -n256  {A..Z} {a..z} {0..9}) >/dev/null 2>&1 ;yes $swapKey | zfs create -V8G $swapZvol -o encryption=on -o keyformat=passphrase -o keylocation=prompt -o primarycache=none -o secondarycache=none -o compression=off -o checksum=off -o logbias=throughput -o sync=always ;while read input ; do sleep 1 ; mkswap /dev/zvol/$swapZvol ; swapon /dev/zvol/$swapZvol ;done <<< /dev/zvol/$swapZvol'
+ExecStart=/usr/bin/bash -c 'if zfs list $(hostname -s) >/dev/null 2>&1 ; then swapZvol="$(hostname -s)/swap" ; else swapZvol="$(zpool list -o name|sed -n 2p)/swap" ; fi ; swapoff -a ; zfs destroy $swapZvol >/dev/null 2>&1 ; swapKey=$(shuf -zer -n256  {A..Z} {a..z} {0..9}) >/dev/null 2>&1 ;yes $swapKey | zfs create -V$(($(grep -m1 "MemTotal" /proc/meminfo | grep -Eo '[0-9]+')/1024/1024 + 1))G $swapZvol -o encryption=on -o keyformat=passphrase -o keylocation=prompt -o primarycache=none -o secondarycache=none -o compression=zle -o checksum=off -o logbias=throughput -o sync=always ;while read input ; do sleep 1 ; mkswap /dev/zvol/$swapZvol ; swapon /dev/zvol/$swapZvol ;done <<< /dev/zvol/$swapZvol'
 
 [Install]
 WantedBy=multi-user.target

@@ -7,7 +7,7 @@ After=zfs-import.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/bin/bash -c 'if grep -q 'unavailable' <<<`zfs get keystatus | grep -v swap`; then echo "There are zfs keys to be loaded."; keys=$(systemd-ask-password "Enter your ZFS dataset Decryption key: ") ; yes $keys | zfs load-key -a; else echo "There are no zfs keys to be loaded."; fi'
+ExecStart=/usr/bin/bash -c 'lockedDatasets=($(zfs get -t filesystem,volume keystatus -H -o name,value | grep -v swap | grep unavailable | cut -f1)) ; echo $${lockedDatasets[*]}; for lockedDataset in $${lockedDatasets[*]} ; do echo $${lockedDataset} ; if zfs get keystatus -H -o value | grep -qs unavailable ; then unlockPassphrase=$(systemd-ask-password "Enter decryption passphrase for $${lockedDataset}: ") ; yes "$unlockPassphrase" | zfs load-key -a ; fi ; done'
 
 [Install]
 WantedBy=zfs-mount.service

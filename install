@@ -1,0 +1,56 @@
+#!/bin/bash
+_scriptPath=$(realpath $0)
+_scriptRoot="$(dirname $(realpath $0))"
+_scriptName="$(basename ${_scriptRoot})"
+
+cd ${_scriptRoot}
+_services=(*.service)
+echo ${_services[*]}
+
+if [ -z "${@}" ]
+then
+  echo "${0}"
+  echo -e "\tPlease provide an argument for which services you wish to install."
+  echo -e "\tFor example:"
+  echo -e "\t\t$0 zfs-autoswap"
+  echo -e "\tSupported services:"
+  for service in ${_services[*]}
+  do
+    echo -e "\t\t${service/.service/}"
+  done
+  exit 1
+fi
+
+[ $UID -ne 0 ] && SUDO=sudo # Sudo if not root
+
+  # Install and enable desired services.
+for service in ${@}
+do
+  serviceFile="${service}.service"
+  if ! [ -f "${serviceFile}" ]
+  then
+    echo "Unable to find a service named ${service} in this project."
+    exit 1
+  fi
+
+  sudo cp -v "${serviceFile}" /etc/systemd/system
+  if [[ ${_scriptRoot} != /opt/${_scriptName} ]]
+  then
+    echo "Installing script to: /opt/${_scriptName}"
+    ${SUDO} mkdir -p /opt/${_scriptName}
+    ${SUDO} cp -v ${service} /opt/${_scriptName}
+  fi
+  # Toggle disable/enable to catch any new dependencies.
+  ${SUDO} systemctl disable ${service}
+  ${SUDO} systemctl enable  ${service}
+  ${SUDO} systemctl start   ${service}
+done
+
+  # Enable zfs.target for order referencing.
+${SUDO} systemctl enable zfs.target
+
+  # Enable zfs-import.target for zfs-mount
+${SUDO} systemctl enable zfs-import.target
+
+  # Enable zfs-mount to automount unlocked non-legacy datasets
+${SUDO} systemctl enable zfs-mount

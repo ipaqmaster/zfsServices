@@ -1,0 +1,107 @@
+#!/bin/bash
+avoidZpoolNamesRegex=(backup)
+
+# Make the swap size that of the total system memory.
+targetSwapZvolSize="$(($(grep -m1 "MemTotal" /proc/meminfo | grep -Eo '[0-9]+')/1024/1024 + 1))G"
+
+#  _____                 _   _
+# |  ___|   _ _ __   ___| |_(_) ___  _ __  ___
+# | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+# |  _|| |_| | | | | (__| |_| | (_) | | | \__ \
+# |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
+#
+
+function log {
+  echo   "[$0] ${@}"
+  logger "[$0] ${@}"
+}
+
+#  ____
+# |  _ \ _ __ ___ _ __
+# | |_) | '__/ _ \ '_ \
+# |  __/| | |  __/ |_) |
+# |_|   |_|  \___| .__/
+#                |_|
+
+if [ $UID -ne 0 ]
+then
+  log "Please run this as root."
+  exit 1
+fi
+
+# Look for a best candidate zpool for this swap volume.
+
+# If the rootfs is ZFS create the swap zvol in the same parent dataset as the rootfs.
+# Otherwise use the first available zpool filtering out for backup zpools.
+
+# In future may also add preference for zpools containing 'nvme' members in the fallback section.
+
+rootMountInfo=($(grep ' / ' /proc/mounts))
+if [[ ${rootMountInfo[2]} == zfs ]]
+then
+  targetSwapZvol="$(dirname ${rootMountInfo[0]})/swap"
+else
+  validZpools=($(zpool list -H -o name| grep -Ev "${avoidZpoolNamesRegex}"))
+  if [ ${#validZpools[*]} -gt 0 ]
+  then
+    targetSwapZvol="${validZpools[0]}/swap"
+  else
+    log "Couldn't find a valid zpool candidate for creating the swap zvol."
+    exit 1
+  fi
+fi
+
+#  ____
+# |  _ \ _   _ _ __
+# | |_) | | | | '_ \
+# |  _ <| |_| | | | |
+# |_| \_\\__,_|_| |_|
+#
+
+# This script assumes it is the only source of swapping. Running it unloads all swaps and creates a new one.
+# This includes destorying and re-creating its own randomly encrypted swap dataset when re-run.
+# g the script will swapoff, destroy and re-create a new swap zvol.
+swapoff -a
+
+# Find any existing swap volumes for removal including our own.
+existingSwapVolumes=($(zfs list -t volume -H -o name | grep '/swap$'))
+if [ ${#existingSwapVolumes} -gt 0 ]
+then
+  for existingSwapVolume in ${existingSwapVolumes[*]}
+  do
+    zfs destroy -rv "${existingSwapVolume}"
+  done
+fi
+
+
+# Generate a random key for encryption the swap dataset
+swapKey=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c256 ; echo)
+yes "$swapKey" | zfs create -s -V$(($(grep -m1 "MemTotal" /proc/meminfo | grep -Eo '[0-9]+')/1024/1024 + 1))G ${targetSwapZvol} \
+  -o encryption=on \
+  -o keyformat=passphrase \
+  -o keylocation=prompt \
+  -o primarycache=none \
+  -o secondarycache=none \
+  -o compression=zle \
+  -o checksum=off \
+  -o logbias=throughput \
+  -o sync=always
+
+zvolPath="/dev/zvol/${targetSwapZvol}"
+
+# Wait for the symlink to appear under /dev/zvol
+timeout=10 ; timer=0
+while ! [ -h ${zvolPath} ] && [ ${timer} -lt ${timeout} ]
+do
+  sleep 1
+  ((timer++))
+done
+
+if [ ${timer} -ge ${timeout} ]
+then
+  log "Timed out waiting for ${zvolPath}"
+  exit 1
+fi
+
+mkswap ${zvolPath}
+swapon ${zvolPath}

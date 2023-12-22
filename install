@@ -43,7 +43,7 @@ do
   # Toggle disable/enable to catch any new dependencies.
   ${SUDO} systemctl disable ${service}
   ${SUDO} systemctl enable  ${service}
-  ${SUDO} systemctl start   ${service}
+  ${SUDO} systemctl restart ${service}
 done
 
   # Enable zfs.target for order referencing.

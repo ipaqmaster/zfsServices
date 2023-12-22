@@ -33,13 +33,17 @@ do
     exit 1
   fi
 
+  # Install the service file
   sudo cp -v "${serviceFile}" /etc/systemd/system
-  if [[ ${_scriptRoot} != /opt/${_scriptName} ]]
+
+  # If there's an accompanying script, install it if required.
+  if [ -f "${service}" ] && [[ ${_scriptRoot} != /opt/${_scriptName} ]]
   then
     echo "Installing script to: /opt/${_scriptName}"
     ${SUDO} mkdir -p /opt/${_scriptName}
     ${SUDO} cp -v ${service} /opt/${_scriptName}
   fi
+
   # Toggle disable/enable to catch any new dependencies.
   ${SUDO} systemctl disable ${service}
   ${SUDO} systemctl enable  ${service}

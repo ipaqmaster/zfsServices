@@ -76,7 +76,7 @@ fi
 
 # Generate a random key for encryption the swap dataset
 swapKey=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c256 ; echo)
-yes "$swapKey" | zfs create -s -V${targetSwapZvolSize} ${targetSwapZvol} \
+yes "$swapKey" | zfs create -b $(getconf PAGESIZE) -s -V${targetSwapZvolSize} ${targetSwapZvol} \
   -o encryption=on \
   -o keyformat=passphrase \
   -o keylocation=prompt \

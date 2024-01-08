@@ -76,16 +76,20 @@ fi
 
 # Generate a random key for encryption the swap dataset
 swapKey=$(tr -dc A-Za-z0-9 < /dev/urandom | head -c256 ; echo)
-yes "$swapKey" | zfs create -b $(getconf PAGESIZE) -s -V${targetSwapZvolSize} ${targetSwapZvol} \
+yes "$swapKey" | zfs create \
+  -b $(getconf PAGESIZE) \
   -o encryption=on \
   -o keyformat=passphrase \
   -o keylocation=prompt \
-  -o primarycache=none \
-  -o secondarycache=none \
-  -o compression=zle \
   -o checksum=off \
+  -o compression=zle \
+  -o com.sun:auto-snapshot=false \
   -o logbias=throughput \
-  -o sync=always
+  -o primarycache=metadata \
+  -o secondarycache=none \
+  -o sync=always \
+  -s \
+  -V${targetSwapZvolSize} ${targetSwapZvol}
 
 zvolPath="/dev/zvol/${targetSwapZvol}"
 
